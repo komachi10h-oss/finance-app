@@ -1,0 +1,183 @@
+/* MODO CLARO (por defecto) */
+body.light-mode {
+  background-color: #f8f9fa !important;
+  color: #212529 !important;
+}
+
+/* MODO OSCURO */
+body.dark-mode {
+  background-color: #121212 !important;
+  color: #e6e6e6 !important;
+}
+
+/* TABLAS */
+body.dark-mode table {
+  color: #fff;
+  background-color: #1e1e1e;
+}
+
+body.dark-mode .table-bordered td,
+body.dark-mode .table-bordered th {
+  border-color: #333 !important;
+}
+
+/* CARDS */
+body.dark-mode .card {
+  background-color: #1e1e1e !important;
+  border-color: #333 !important;
+}
+
+/* NAVBAR */
+body.dark-mode .navbar {
+  background-color: #1b1b1b !important;
+  color: #fff !important;
+}
+
+body.dark-mode .navbar a {
+  color: #fff !important;
+}
+
+/* PAGINACIÓN */
+body.dark-mode .page-link {
+  background-color: #1e1e1e !important;
+  color: #fff !important;
+  border-color: #333 !important;
+}
+
+body.dark-mode .page-item.active .page-link {
+  background-color: #333 !important;
+  border-color: #555 !important;
+}
+
+/* SIDEBAR EN MODO CLARO (tu estado actual) */
+#sidebar {
+    background-color: var(--sidebar-bg, #0d6efd); /* usa bg-primary por defecto */
+    color: var(--sidebar-text, white);
+}
+
+/* SIDEBAR EN MODO OSCURO */
+.dark-mode #sidebar {
+    background-color: #1e1e1e !important;   /* Cambia a gris oscuro elegante */
+    color: #e0e0e0 !important;
+}
+
+/* LINKS DENTRO DEL SIDEBAR */
+.dark-mode #sidebar a {
+    color: #d4d4d4 !important;
+}
+
+.dark-mode #sidebar a:hover {
+    color: white !important;
+}
+
+/* SEPARADORES, ICONOS, ETC. */
+.dark-mode #sidebar .nav-item {
+    border-color: #3a3a3a;
+}
+
+/* 🔥 Fuerza el cambio de color para los enlaces del sidebar */
+.dark-mode #sidebar a.list-group-item {
+    background-color: #1e1e1e !important;
+    color: #dcdcdc !important;
+    border-color: #333 !important;
+}
+
+/* Hover */
+.dark-mode #sidebar a.list-group-item:hover {
+    background-color: #2a2a2a !important;
+    color: #ffffff !important;
+}
+
+/* Para enlaces activos */
+.dark-mode #sidebar a.list-group-item.active {
+    background-color: #333333 !important;
+    color: #ffffff !important;
+}
+
+
+/* Botón que actúa como encabezado */
+#theme-toggle {
+    width: 100%;
+    display: block;
+    text-align: center;
+
+    padding-top: 1.5rem;      /* py-4 */
+    padding-bottom: 1.5rem;
+
+    font-weight: bold;        /* font-weight-bold */
+    font-size: 1.25rem;       /* tamaño heading */
+    color: white !important;  /* texto blanco */
+    background: none;         /* sin fondo (hereda el azul del sidebar) */
+    border: none;             /* sin borde */
+
+    cursor: pointer;
+}
+
+/* Forzar color en dark mode si usas data-theme */
+[data-theme="dark"] #theme-toggle {
+    color: white;
+}
+
+
+
+/* === CARD TOGGLE === */
+.card-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #4e73df;
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.card-toggle:hover {
+    background: #3c5ec4;
+}
+
+.card-toggle .left {
+    flex: 0 0 auto;
+}
+
+.card-toggle .right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+}
+
+.credit-bar {
+    width: 150px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.credit-bar-fill {
+    height: 100%;
+    width: 0; /* IMPORTANTE: Inicia en 0 */
+    background: linear-gradient(90deg, #10b981 0%, #ef4444 100%);
+    transition: width 0.5s ease;
+}
+
+.credit-limit-text {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: white;
+    min-width: 140px;
+    text-align: right;
+}
+
+/* Dark mode */
+.dark-mode .card-toggle {
+    background: #2a2a2a;
+}
+
+.dark-mode .card-toggle:hover {
+    background: #333333;
+}
