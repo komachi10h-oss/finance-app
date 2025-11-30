@@ -1,0 +1,38 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Verificación</title>
+    <link href="{% static 'css/sb-admin-2.min.css' %}" rel="stylesheet">
+</head>
+
+<body class="bg-gradient-primary">
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow-lg mt-5">
+                <div class="card-body">
+                    <h4 class="text-center mb-4">Verificación de seguridad</h4>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            {{ form.otp }}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">
+                            Verificar Código
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
