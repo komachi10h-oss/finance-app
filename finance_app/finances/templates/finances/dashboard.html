@@ -1,0 +1,515 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance Dashboard</title>
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/theme.css' %}">
+
+<style>
+body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fc; }
+#sidebar { min-height: 100vh; background-color: #4e73df; color: white; }
+#sidebar .nav-link { color: #d1d3e2; }
+#sidebar .nav-link.active, #sidebar .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
+.content-wrapper { padding: 20px; }
+.card { border-radius: 0.75rem; }
+.modal-content { border-radius: 0.75rem; }
+.navbar-toggler { border-color: rgba(255,255,255,0.5); }
+</style>
+</head>
+<body id="theme-body" class="light-mode">
+<div class="d-flex" id="wrapper">
+<nav id="sidebar" class="bg-primary">
+  <button id="theme-toggle" class ="sidebar-heading">Finance App ◎</button>
+  <div class="list-group list-group-flush">
+    
+
+    <a href="{% url 'finances:dashboard' %}" class="list-group-item list-group-item-action bg-primary text-white active">Dashboard</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white" data-toggle="modal" data-target="#exportCSVModal">Export CSV</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white" data-toggle="modal" data-target="#budgetModal">Set Monthly Budget</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white" data-toggle="modal" data-target="#recurringModal">Create Recurring Income</a>
+    <a href="{% url 'cards:cards_dashboard' %}" class="list-group-item list-group-item-action bg-primary text-white">Cards</a>
+  </div>
+</nav>
+<div id="page-content-wrapper" class="w-100">
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+  <button class="btn btn-link d-lg-none text-primary" id="menu-toggle">☰</button>
+  <div class="mr-auto">
+    <span class="mr-3 font-weight-bold text-gray-800">Dashboard</span>
+  </div>
+  <div class="ml-auto">
+    <button class="btn btn-primary" data-toggle="modal" data-target="#addTransactionModal">Add Transaction</button>
+  </div>
+</nav>
+<div class="container-fluid content-wrapper">
+<div class="row mb-4">
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-primary shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Income</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_income }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-danger shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Total Expense</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_expense }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-4 col-md-6 mb-4">
+    <div class="card border-left-success shadow h-100 py-2">
+      <div class="card-body">
+        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Balance</div>
+        <div class="h5 mb-0 font-weight-bold text-gray-800">${{ balance }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-xl-6 col-lg-6">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Weekly Income vs Expenses</h6>
+        <form method="get" class="form-inline mb-3 ml-auto">
+
+            <select name="chart_category" class="form-control mr-2">
+                <option value="">All categories</option>
+                {% for c in categories %}
+                    <option value="{{ c.id }}" 
+                        {% if request.GET.chart_category == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button class="btn btn-secondary">Filter</button>
+
+        </form>
+
+      </div>
+      <div class="card-body">
+        <canvas id="weeklyChart" style="height:300px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6 col-lg-6">
+    <div class="card shadow mb-4">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Expense Distribution by Category</h6>
+        
+      </div>
+      <div class="card-body">
+        <canvas id="categoryChart" style="height:300px;"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow mb-4">
+  <div class="card-header py-3 d-flex justify-content-between align-items-center">
+    <h6 class="m-0 font-weight-bold text-primary">Recent Transactions</h6>
+    <form method="get" class="form-inline mb-3">
+
+    <!-- Category Filter -->
+    <select name="category" class="form-control mr-2">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+            <option value="{{ c.id }}" {% if request.GET.category == c.id|stringformat:"s" %}selected{% endif %}>
+                {{ c.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <!-- Type Filter -->
+    <select name="type" class="form-control mr-2">
+        <option value="">All Types</option>
+        <option value="income"  {% if request.GET.type == "income" %}selected{% endif %}>Ingreso</option>
+        <option value="expense" {% if request.GET.type == "expense" %}selected{% endif %}>Gasto</option>
+    </select>
+
+        <button class="btn btn-primary">Filter</button>
+    </form>
+
+
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered" width="100%" cellspacing="0">
+        <thead class="thead-light">
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>Type</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transactions %}
+          <tr>
+            <td>{{ t.date }}</td>
+            <td>{{ t.title }}</td>
+            <td>{{ t.category.name|default:"" }}</td>
+            <td>${{ t.amount }}</td>
+            <td>{{ t.get_transaction_type_display }}</td>
+            <td>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-warning edit-transaction-btn"
+                data-toggle="modal" 
+                data-target="#editTransactionModal"
+                data-id="{{ t.id }}"
+                data-title="{{ t.title }}"
+                data-amount="{{ t.amount }}"
+                data-type="{{ t.transaction_type }}"
+                data-category="{{ t.category.id }}"
+                data-date="{{ t.date|date:'Y-m-d\\TH:i' }}"
+                data-description="{{ t.description }}">
+                Edit
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-danger delete-transaction-btn"
+                data-toggle="modal"
+                data-target="#deleteTransactionModal"
+                data-id="{{ t.id }}"
+                data-title="{{ t.title }}"
+                data-amount="{{ t.amount }}">
+                Delete
+              </button>
+
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center text-muted">No transactions found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <nav aria-label="Transaction pagination">
+    <ul class="pagination justify-content-center">
+      {% if transactions.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ transactions.previous_page_number }}" aria-label="Previous">
+            &laquo;
+          </a>
+        </li>
+      {% endif %}
+
+      {% for num in transactions.paginator.page_range %}
+        <li class="page-item {% if transactions.number == num %}active{% endif %}">
+          <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+        </li>
+      {% endfor %}
+
+      {% if transactions.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ transactions.next_page_number }}" aria-label="Next">
+            &raquo;
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modals -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Transaction</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          {{ form.as_p }}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" name="add_transaction" class="btn btn-primary">Save</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="budgetModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <form method="post" action="{% url 'finances:set_budget' %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title">Set Monthly Budget</h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <div class="modal-body">
+            {{ budget_form.as_p }}
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-warning" type="submit">Save</button>
+            <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </form>
+      </div>
+  </div>
+</div>
+
+<div class="modal fade" id="recurringModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <form method="post" action="{% url 'finances:create_recurring_income' %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title">Create Recurring Income</h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+          <div class="modal-body">
+            {{ recurring_form.as_p }}
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-info" type="submit">Create</button>
+            <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </form>
+      </div>
+  </div>
+</div>
+
+<div class="modal fade" id="exportCSVModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Export Data to CSV</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <p>Click below to export filtered transactions as CSV.</p>
+          <a id="export-link" class="btn btn-success" href="{% url 'finances:export_csv' %}">Download CSV</a>
+        </div>
+      </div>
+  </div>
+</div>
+<!-- Modal Edit Transaction -->
+<div class="modal fade" id="editTransactionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content shadow-lg">
+      <form id="editTransactionForm" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header bg-warning text-white">
+          <h5 class="modal-title">Edit Transaction</h5>
+          <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          {{ form.as_p }}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Modal Delete Transaction -->
+<div class="modal fade" id="deleteTransactionModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content shadow-lg">
+      <form id="deleteTransactionForm" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">Delete Transaction</h5>
+          <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete <strong id="deleteTitle"></strong> (<span id="deleteAmount"></span>)?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Confirm Delete</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const deleteButtons = document.querySelectorAll('.delete-transaction-btn');
+  const deleteForm = document.getElementById('deleteTransactionForm');
+  const deleteTitle = document.getElementById('deleteTitle');
+  const deleteAmount = document.getElementById('deleteAmount');
+
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const title = this.dataset.title;
+      const amount = this.dataset.amount;
+
+      // Cambiar la acción del formulario al endpoint correspondiente
+      deleteForm.action = `/finances/delete/${id}/`;
+
+      // Mostrar la información en el modal
+      deleteTitle.textContent = title;
+      deleteAmount.textContent = amount;
+    });
+  });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const editButtons = document.querySelectorAll('.edit-transaction-btn');
+  const form = document.getElementById('editTransactionForm');
+
+  editButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Obtener datos del botón
+      const id = this.dataset.id;
+      const title = this.dataset.title;
+      const amount = this.dataset.amount;
+      const type = this.dataset.type;
+      const category = this.dataset.category;
+      const date = this.dataset.date;
+      const description = this.dataset.description;
+
+      // Actualizar action del formulario
+      form.action = `/finances/edit/${id}/`;
+
+      // Rellenar campos (usa los nombres de tus inputs del form)
+      form.querySelector('[name="title"]').value = title;
+      form.querySelector('[name="amount"]').value = amount;
+      form.querySelector('[name="transaction_type"]').value = type;
+      form.querySelector('[name="category"]').value = category;
+      form.querySelector('[name="date"]').value = date;
+      form.querySelector('[name="description"]').value = description;
+    });
+  });
+});
+</script>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+{{ weekly_data|json_script:"weekly-data" }}
+<script>
+$("#menu-toggle").click(function(e){ 
+  e.preventDefault(); 
+  $("#sidebar").toggleClass("d-none"); 
+});
+const weeklyData = JSON.parse(document.getElementById('weekly-data').textContent);
+// ====== Datos semanales (ingresos vs gastos) ======
+var weeklyLabels = weeklyData.labels;
+var weeklyIncome = weeklyData.income;
+var weeklyExpense = weeklyData.expense;
+
+
+
+var ctx = document.getElementById('weeklyChart').getContext('2d');
+var weeklyChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: weeklyLabels,
+    datasets: [
+      { label: 'Income', backgroundColor: '#4e73df', data: weeklyIncome },
+      { label: 'Expense', backgroundColor: '#e74a3b', data: weeklyExpense }
+    ]
+  },
+  options: { 
+    responsive: true, 
+    maintainAspectRatio: false,
+    scales: {
+      yAxes: [{ ticks: { beginAtZero:true } }]
+    }
+  }
+});
+
+// ====== Distribución por categoría ======
+var catLabels = JSON.parse('{{ pie_labels|safe }}');
+var catValues = JSON.parse('{{ pie_values|safe }}');
+
+
+
+var ctx2 = document.getElementById('categoryChart').getContext('2d');
+var categoryChart = new Chart(ctx2, {
+  type: 'pie',
+  data: { 
+    labels: catLabels,
+    datasets: [{
+      data: catValues, 
+      backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#f39c12', '#8e44ad', '#3498db', '#2ecc71']
+    }] 
+  },
+  options: { 
+    responsive: true, 
+    maintainAspectRatio: false,
+    legend: { position: 'bottom' }
+  }
+});
+
+// ====== Exportación CSV ======
+$('#exportCSVModal').on('show.bs.modal', function () {
+  var qs = window.location.search;
+  $('#export-link').attr('href','{% url "finances:export_csv" %}'+qs);
+});
+</script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // Si la URL tiene ?page=, desplazamos al paginador
+    if (window.location.search.includes("page=")) {
+      const tableSection = document.querySelector(".table-responsive");
+      if (tableSection) {
+        tableSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  });
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const body = document.getElementById("theme-body");
+    const button = document.getElementById("theme-toggle");
+
+    // Leer modo guardado
+    const saved = localStorage.getItem("theme-mode");
+
+    if (saved) {
+        body.className = saved;
+        button.textContent = saved === "dark-mode" ? "Finance App ◉" : "Finance App ◎";
+    }
+
+    // Toggle
+    button.addEventListener("click", function () {
+        if (body.classList.contains("light-mode")) {
+            body.classList.replace("light-mode", "dark-mode");
+            localStorage.setItem("theme-mode", "dark-mode");
+            button.textContent = "Finance App ◉";
+        } else {
+            body.classList.replace("dark-mode", "light-mode");
+            localStorage.setItem("theme-mode", "light-mode");
+            button.textContent = "Finance App ◎";
+        }
+    });
+});
+</script>
+
+
+</body>
+</html>

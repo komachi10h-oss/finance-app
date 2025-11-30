@@ -1,0 +1,7 @@
+
+{% load static %}
+<html><body>
+<h2>Edit Transaction</h2>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button type="submit">Save</button></form>
+<p><a href="{% url 'finances:dashboard' %}">Back</a></p>
+</body></html>

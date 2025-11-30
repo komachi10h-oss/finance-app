@@ -1,0 +1,10 @@
+
+<html><body>
+<h2>Weekly Report (last 4 weeks)</h2>
+<table><thead><tr><th>Date</th><th>Title</th><th>Amount</th><th>Type</th><th>Category</th></tr></thead><tbody>
+{% for t in data %}
+<tr><td>{{ t.date }}</td><td>{{ t.title }}</td><td>{{ t.amount }}</td><td>{{ t.get_transaction_type_display }}</td><td>{{ t.category.name if t.category }}</td></tr>
+{% endfor %}
+</tbody></table>
+<p><a href="{% url 'finances:dashboard' %}">Back</a></p>
+</body></html>
