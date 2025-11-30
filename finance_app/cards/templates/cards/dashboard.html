@@ -1,0 +1,354 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarjetas – Dashboard</title>
+
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/theme.css' %}">
+
+
+<style>
+body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fc; }
+#sidebar { min-height: 100vh; background-color: #4e73df; color: white; }
+#sidebar .nav-link { color: #d1d3e2; }
+#sidebar .nav-link.active, #sidebar .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
+.content-wrapper { padding: 20px; }
+.card { border-radius: 0.75rem; }
+
+.card-toggle {
+    cursor: pointer;
+    padding: 15px;
+    background: #4e73df;
+    color: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+.card-toggle:hover { background: #3c5ec4; }
+
+.card-details {
+    display: none;
+    animation: fadeIn .3s ease-in-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+
+<body id="theme-body" class="light-mode">
+
+<div class="d-flex" id="wrapper">
+
+<!-- SIDEBAR -->
+<nav id="sidebar" class="bg-primary">
+  <button id="theme-toggle" class ="sidebar-heading">Finance App ◎</button>
+  <div class="list-group list-group-flush">
+    
+
+    <a href="{% url 'finances:dashboard' %}" class="list-group-item list-group-item-action bg-primary text-white">Dashboard</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white">Export CSV</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white">Set Monthly Budget</a>
+    <a href="#" class="list-group-item list-group-item-action bg-primary text-white">Create Recurring Income</a>
+    <a href="{% url 'cards:cards_dashboard' %}" class="list-group-item list-group-item-action bg-primary text-white active">Cards</a>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<div id="page-content-wrapper" class="w-100">
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+  <button class="btn btn-link d-lg-none text-primary" id="menu-toggle">☰</button>
+  <h4 class="ml-3 mt-2 font-weight-bold text-primary">Card Activity</h4>
+  <div class="ml-auto">
+    <button onclick="abrirVentana()" class="btn btn-primary">Add Card</button>
+  </div>
+  
+</nav>
+
+<div class="container-fluid content-wrapper">
+  
+  {{ cards_json|json_script:"cards-json" }}
+
+  {% for card in cards %}
+    
+  <!-- TARJETA -->
+<div class="card-toggle" data-target="#card-{{ card.id }}" data-card-id="{{ card.id }}" style="display: flex;justify-content: space-between;">
+    <div class="left">
+        <strong>{{ card.bank }}</strong> — **** {{ card.last4 }}
+    </div>
+    {% if card.is_credit_card %}
+    <div class="right" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="width: 300px; height: 30px; background-color: #e0e0e0; border-radius: 5px; position: relative; overflow: hidden;">
+            <div style="width: {{ card.porcentaje }}%; height: 100%; background-color: #FF3B3B;"></div>
+            <span style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: bold; color: #333;white-space: nowrap;">${{ card.spent }} / ${{ card.credit_limit }}</span>
+        </div>
+        
+        <span class="credit-limit-text" style="margin-left: 15px; font-weight: bold; color: #333;font-size: 18px;">
+            
+        </span>
+    </div>
+    {% endif %}
+    <!--{% if card.is_credit_card %}
+    <div class="right">
+        <div class="credit-bar">
+            <div class="credit-bar-fill" data-progress="{{ card.progress_percent }}"></div>
+        </div>
+
+        <span class="credit-limit-text">
+            {{ card.spent }} / {{ card.credit_limit }}
+        </span>
+    </div>
+    {% endif %}-->
+</div>
+
+
+
+
+  <div id="card-{{ card.id }}" class="card-details">
+
+    <!-- TABLA -->
+    <div class="card shadow mb-4">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Movimientos recientes</h6>
+      </div>
+      <div class="card-body">
+        <div id="transactions-container-{{ card.id }}">
+          {# Cargamos inicialmente la primera página por servidor para cada tarjeta #}
+          {% with paginator=card.transactions.all|dictsortreversed:"date" %}
+            {# Si ya en tu vista asociaste card.page_obj a cada card, mejor incluir esa page_obj aquí: #}
+          {% endwith %}
+
+          <div id="transactions-{{ card.id }}">
+            {% include "cards/transactions_table.html" with page_obj=card.page_obj card_id=card.id %}
+          </div>
+
+        </div>
+      </div>
+
+      
+
+      
+    </div>
+
+    <!-- GRAFICO -->
+    <div class="card shadow mb-5">
+      <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Actividad de la tarjeta</h6>
+      </div>
+      <div class="card-body">
+        <canvas id="chart-{{ card.id }}" style="height:300px;"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  {% endfor %}
+</div>
+</div>
+</div>
+
+<!-- JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const cardsData = JSON.parse(document.getElementById("cards-json").textContent);
+    
+    document.querySelectorAll(".card-toggle").forEach(toggle => {
+        const cardId = toggle.dataset.cardId;
+        const cardData = cardsData.find(c => c.id === cardId);
+        
+        if (cardData && cardData.is_credit_card) {
+            const fill = toggle.querySelector(".credit-bar-fill");
+            if (fill) {
+                setTimeout(() => {
+                    fill.style.width = cardData.progress_percent + "%";
+                }, 100);
+            }
+        }
+    });
+});
+</script>
+
+<script>
+document.addEventListener("click", function(e) {
+    const link = e.target.closest(".ajax-page");
+    if (!link) return;
+
+    e.preventDefault();
+
+    const cardId = link.dataset.card;
+    const pageNum = link.dataset.page;
+
+    fetch(`/cards/transactions/card/${cardId}/page/${pageNum}/`)
+        .then(res => res.text())
+        .then(html => {
+            document.querySelector(`#transactions-${cardId}`).innerHTML = html;
+        })
+        .catch(err => {
+            console.error(err);
+        });
+});
+</script>
+
+
+<script>
+function abrirVentana() {
+    window.open(
+        "{% url 'cards:add_card' %}",
+        "AddCardWindow",
+        "popup=true,left=200,top=150," +
+        "resizable=yes,scrollbars=yes,toolbar=no,menubar=no," + 
+        "location=no,status=no"
+    );
+}
+</script>
+<script>
+const rawJson = document.getElementById("cards-json").textContent;
+
+let cardss = [];
+
+try {
+    cardss = JSON.parse(rawJson);
+} catch (e) {
+    console.error("ERROR PARSEANDO JSON:", e);
+    console.log("JSON RECIBIDO:", rawJson);
+}
+</script>
+<script>
+// Para evitar crear el gráfico varias veces
+const chartsRendered = {};
+const cards = JSON.parse(document.getElementById("cards-json").textContent);
+document.querySelectorAll(".card-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const target = document.querySelector(btn.dataset.target);
+        
+        const isHidden = (target.style.display !== "block");
+        target.style.display = isHidden ? "block" : "none";
+
+        // Si se está abriendo, recién ahí creamos el gráfico
+        if (isHidden) {
+            const cardId = btn.dataset.target.replace("#card-", "");
+            if (!chartsRendered[cardId]) {
+                renderChart(cardId);
+                chartsRendered[cardId] = true;
+            }
+        }
+    });
+});
+
+// Función para crear el gráfico
+function renderChart(cardId) {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const canvas = document.getElementById(`chart-${cardId}`);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: card.chart_labels,
+          datasets: [
+            { label: "Income", backgroundColor: "#4e73df", data: card.chart_income },
+            { label: "Expense", backgroundColor: "#e74a3b", data: card.chart_expense }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: { yAxes: [{ ticks: { beginAtZero: true } }] }
+        }
+    });
+}
+
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const body = document.getElementById("theme-body");
+    const button = document.getElementById("theme-toggle");
+
+    // Leer modo guardado
+    const saved = localStorage.getItem("theme-mode");
+
+    if (saved) {
+        body.className = saved;
+        button.textContent = saved === "dark-mode" ? "Finance App ◉" : "Finance App ◎";
+    }
+
+    // Toggle
+    button.addEventListener("click", function () {
+        if (body.classList.contains("light-mode")) {
+            body.classList.replace("light-mode", "dark-mode");
+            localStorage.setItem("theme-mode", "dark-mode");
+            button.textContent = "Finance App ◉";
+        } else {
+            body.classList.replace("dark-mode", "light-mode");
+            localStorage.setItem("theme-mode", "light-mode");
+            button.textContent = "Finance App ◎";
+        }
+    });
+});
+</script>
+
+<script>
+console.log("=== DEBUG INICIO ===");
+
+// Ver si existe el JSON
+const jsonElement = document.getElementById("cards-json");
+console.log("Elemento JSON encontrado:", jsonElement);
+
+if (jsonElement) {
+    const rawJson = jsonElement.textContent;
+    console.log("JSON RAW:", rawJson);
+    
+    try {
+        const cardsData = JSON.parse(rawJson);
+        console.log("Cards parseadas:", cardsData);
+        console.log("Número de cards:", cardsData.length);
+        
+        cardsData.forEach(card => {
+            console.log(`Card ${card.id}:`, {
+                bank: card.bank,
+                is_credit: card.is_credit_card,
+                progress: card.progress_percent,
+                spent: card.spent,
+                limit: card.credit_limit
+            });
+        });
+    } catch(e) {
+        console.error("Error parseando JSON:", e);
+    }
+}
+
+// Ver los toggles
+const toggles = document.querySelectorAll(".card-toggle");
+console.log("Toggles encontrados:", toggles.length);
+
+toggles.forEach((toggle, i) => {
+    console.log(`Toggle ${i}:`, {
+        cardId: toggle.dataset.cardId,
+        target: toggle.dataset.target,
+        hasRight: !!toggle.querySelector(".right"),
+        hasBar: !!toggle.querySelector(".credit-bar"),
+        hasFill: !!toggle.querySelector(".credit-bar-fill")
+    });
+    
+    const fill = toggle.querySelector(".credit-bar-fill");
+    if (fill) {
+        console.log(`Fill ${i} - width actual:`, fill.style.width);
+        console.log(`Fill ${i} - computed width:`, window.getComputedStyle(fill).width);
+    }
+});
+
+console.log("=== DEBUG FIN ===");
+</script>
+</body>
+</html>

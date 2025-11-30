@@ -1,0 +1,56 @@
+{# templates/cards/partials/transactions_table.html #}
+
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <thead class="thead-light">
+      <tr>
+        <th>Fecha</th>
+        <th>Descripción</th>
+        <th>Monto</th>
+        <th>Tipo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in page_obj %}
+      <tr>
+        <td>{{ t.date }}</td>
+        <td>{{ t.description|default:"(Sin descripción)" }}</td>
+        <td>${{ t.amount }}</td>
+        <td>{{ t.type }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="text-center text-muted">No hay transacciones</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<nav>
+  <ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link ajax-page" href="#"
+         data-card="{{ card_id }}"
+         data-page="{{ page_obj.previous_page_number }}">«</a>
+    </li>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+      <a class="page-link ajax-page" href="#"
+         data-card="{{ card_id }}"
+         data-page="{{ num }}">{{ num }}</a>
+    </li>
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link ajax-page" href="#"
+         data-card="{{ card_id }}"
+         data-page="{{ page_obj.next_page_number }}">»</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>

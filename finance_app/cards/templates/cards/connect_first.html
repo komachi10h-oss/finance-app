@@ -1,0 +1,101 @@
+<!-- Ejemplo: connect_first.html -->
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Conectar cuenta bancaria</title>
+    <!-- SDK oficial de Belvo -->
+    <script src="https://cdn.belvo.io/belvo-widget-1-stable.js" async></script>
+</head>
+<body>
+
+<!-- Contenedor obligatorio para el widget -->
+<div id="belvo"></div>
+<script>
+window.onload = function () {
+    // Calcula el alto real del contenido
+    const width = document.documentElement.scrollWidth + 5;
+    const height = document.documentElement.scrollHeight + 5;
+
+    window.resizeTo(width, height);
+};
+</script>
+
+<script type="text/javascript">
+  // Callbacks obligatorios
+  function successCallback(link, institution) {
+      console.log("SUCCESS:", link, institution);
+
+      // Guardar link en Django
+      fetch("/cards/save-link/", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": "{{ csrf_token }}"
+          },
+          body: JSON.stringify({ link: link })
+      })
+      .then(r => r.json())
+      .then(data => console.log("Link guardado:", data));
+      window.close();
+
+  }
+
+  function exitCallback(data) {
+      console.log("Widget cerrado:", data);
+  }
+
+  function eventCallback(eventName, data) {
+      console.log("Evento del widget:", eventName, data);
+  }
+
+  // Obtener access token desde Django
+  async function getAccessToken() {
+      try {
+          const response = await fetch("/cards/get-access-token/");
+          const data = await response.json();
+          return data.access_token;
+      } catch (err) {
+          console.error("Error al obtener access token:", err);
+          alert("No se pudo obtener el token de Belvo");
+          return null;
+      }
+  }
+
+
+function openBelvoWidget(accessToken) {
+        belvoSDK.createWidget(accessToken, {
+            container: "#belvo",
+            callback: (link, institution) => successCallback(link, institution),
+            /*callbacks: {
+                onSuccess: function(link, institution) {
+                    console.log("SUCCESS:", link, institution);
+                    fetch("/cards/save-link/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}"
+                        },
+                        body: JSON.stringify({ link: link })
+                    });
+                },
+                onExit: function(data) { console.log("EXIT:", data); },
+                onEvent: function(eventName, data) { console.log("EVENT:", eventName, data); }
+            }*/
+        }).build();
+      };
+getAccessToken().then(openBelvoWidget)
+</script>
+
+</body>
+</html>
+

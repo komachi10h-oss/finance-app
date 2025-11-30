@@ -1,0 +1,3 @@
+belvo-python
+python-dotenv
+requests
